@@ -1,36 +1,46 @@
-# PyTorch MNIST Classification & Regularization Analysis
+# PyTorch ile MNIST Sınıflandırma: Regularization ve Hiperparametre Analizi
 
-Bu proje, PyTorch kullanılarak MNIST veri seti üzerinde bir Çok Katmanlı Algılayıcı (MLP) modelinin eğitilmesini ve farklı hiperparametre/regularization tekniklerinin modelin **genelleştirme (generalization)** yeteneğine etkisini detaylıca incelemektedir.
+Bu proje, PyTorch kullanılarak MNIST veri seti üzerinde Çok Katmanlı Algılayıcı (MLP) modelinin eğitilmesini içermektedir. Projenin temel amacı sadece modeli eğitmek değil; **farklı aktivasyon fonksiyonlarının, Dropout oranlarının ve L2 Regularization (Weight Decay)** tekniklerinin modelin ezberlemesini (overfitting) nasıl engellediğini ve genelleştirme (generalization) yeteneğini nasıl artırdığını bilimsel bir yaklaşımla analiz etmektir.
 
-## 📌 Projenin Amacı
-Sadece yüksek doğruluk (accuracy) elde etmek değil; Overfitting (aşırı öğrenme) sorununu önleyerek, modelin görmediği test verisinde en iyi şekilde çalışmasını sağlayacak "ideal" parametreleri bulmaktır.
+## 📊 Deney Sonuçları (Gerçek Zamanlı Çıktılar)
 
-## 🧪 Yapılan Deneyler ve İzole Karşılaştırmalar
+Değişkenlerin etkisini net bir şekilde görebilmek için parametreler izole edilerek test edilmiştir. Aşağıdaki tablo, eğitim sonucunda elde edilen gerçek verileri göstermektedir (Test başarısına göre sıralanmıştır):
 
-Deneyler, değişkenlerin etkisini net görebilmek için izole edilerek yapılmıştır.
+| Deney Adı | Aktivasyon | Dropout | L2 (WD) | Train Acc (%) | Test Acc (%) | Gap (Train-Test) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Drop: 0.3** | **ReLU** | **0.3** | **0.0000** | 98.37 | **98.31** | **0.06** |
+| L2 Only (1e-4) | ReLU | 0.0 | 0.0001 | 99.14 | 98.23 | 0.91 |
+| Drop: 0.1 | ReLU | 0.1 | 0.0000 | 98.99 | 98.11 | 0.88 |
+| Drop: 0.2 | ReLU | 0.2 | 0.0000 | 98.72 | 97.99 | 0.73 |
+| Act: ReLU (Base)| ReLU | 0.2 | 0.0001 | 98.30 | 97.92 | 0.38 |
+| Drop: 0.5 | ReLU | 0.5 | 0.0000 | 96.80 | 97.81 | -1.01 |
+| Baseline (No Reg)| ReLU | 0.0 | 0.0000 | **99.36** | 97.79 | 1.57 |
+| Act: LeakyReLU | LeakyReLU| 0.2 | 0.0001 | 98.30 | 97.70 | 0.60 |
+| Act: Tanh | Tanh | 0.2 | 0.0001 | 97.69 | 97.48 | 0.21 |
 
-### 1. L2 Regularization (Weight Decay) Analizi
-* **Durum:** Dropout olmadan, `weight_decay=0.0` ile `weight_decay=1e-4` karşılaştırıldı.
-* **Sonuç & Neden:** Hiçbir regülarizasyon olmadığında (Baseline), eğitim doğruluğu %100'e yaklaşırken test doğruluğu geride kalır (Train-Test Gap büyüktür). L2 regülarizasyonu eklemek, büyük ağ ağırlıklarını cezalandırarak modelin verideki gereksiz gürültüleri ezberlemesini önledi ve Test başarısını artırdı.
+---
 
-### 2. Aktivasyon Fonksiyonları Karşılaştırması
-* **Deneyler:** `ReLU`, `Tanh` ve `LeakyReLU` (Standart Dropout ve L2 kullanılarak).
-* **Sonuç & Neden:** * **ReLU:** Negatif değerleri sıfırlayarak ağa non-lineerlik katar. "Vanishing Gradient" problemini çözdüğü için en istikrarlı ve hızlı öğrenen fonksiyondur.
-  * **LeakyReLU:** ReLU'nun aksine negatif değerlerde çok küçük bir eğim bırakır ("Dying ReLU" problemini önler). Genellikle ReLU ile başa baş performans gösterir.
-  * **Tanh:** Sığ ağlarda iyi çalışsa da, bu derinlikteki bir MLP'de gradyanların doygunluğa ulaşmasına sebep olabileceği için ReLU türevlerinin biraz gerisinde kalmıştır.
+[Image of overfitting and underfitting in neural networks]
 
-### 3. Dropout Etkisi ve Oran Karşılaştırması
-* **Deneyler:** Dropout yok (0.0), %10 (0.1), %20 (0.2), %30 (0.3) ve %50 (0.5) oranları test edildi.
-* **Sonuç & Neden:**
-  * Dropout olmadan model hızla overfitting'e gider.
-  * Dropout oranı arttıkça, Eğitim (Train) ve Test arasındaki fark (Genelleme Gap'i) azalır.
-  * Ancak **Dropout = 0.5** gibi yüksek bir değere çıkıldığında, ağ her adımda nöronların yarısını kaybettiği için "Underfitting" (öğrenememe) yaşamaya başlar ve test doğruluğu düşer.
-  * **İdeal Nokta:** Bu mimari için 0.2 ve 0.3 oranları, ezberlemeyi durdururken test başarısını zirveye taşıyan "Sweet Spot" olarak bulunmuştur.
+## 🧪 Bulgular ve Teorik Analiz
 
-## 🏆 Hangi Teknik En İyi Generalization'ı Sağlıyor?
-Deney sonuçlarına göre, en iyi genelleştirme (Minimum Train-Test Gap ve Maksimum Test Accuracy) **L2 Regularization (1e-4) ve Dropout'un (0.2) birlikte kullanıldığı (Act: ReLU)** senaryoda elde edilmektedir. 
+Elde edilen sonuçlar, derin öğrenme teorisini birebir doğrulamaktadır:
 
-Sadece birini seçmek gerekirse; **Dropout**, ağın belirli özelliklere aşırı güvenmesini (co-adaptation) doğrudan engellediği için L2'ye kıyasla Overfitting'i önlemede daha dramatik ve başarılı bir sonuç vermiştir.
+### 1. Overfitting (Aşırı Öğrenme) ve Baseline Modeli
+**Baseline (No Reg)** deneyinde hiçbir regülarizasyon kullanılmamıştır. Model eğitim verisinde **%99.36** gibi çok yüksek bir başarıya ulaşmış, ancak test verisinde **%97.79**'da kalmıştır. Aradaki **%1.57'lik fark (Gap)**, modelin eğitim verisindeki gürültüleri ezberlediğinin (Overfitting) en net kanıtıdır.
+
+### 2. L2 Regularization'ın Etkisi
+**L2 Only** deneyinde ağ ağırlıklarına ceza (weight decay) uygulandığında, Train-Test arasındaki fark (Gap) %1.57'den **%0.91**'e düşmüş ve test başarısı **%98.23**'e yükselmiştir. L2, modelin ezberlemesini zorlaştırarak daha iyi genelleştirme yapmasını sağlamıştır.
+
+### 3. Dropout Oranları: Neden -1.01% Çıktı?
+* **"Sweet Spot" (0.3):** %30 Dropout oranı, modelin ezberlemesini mükemmel bir şekilde durdurmuş, Gap farkını **%0.06**'ya (neredeyse sıfıra) indirerek **%98.31** ile en yüksek test başarısını getirmiştir.
+* **Underfitting (-1.01% Gap):** %50 Dropout uygulandığında Test başarısı, Eğitim başarısından daha yüksek çıkmıştır (Negatif Gap). Bunun sebebi, `model.train()` aşamasında nöronların yarısının kapalı olması ve modelin zorlanması, `model.eval()` (test) aşamasında ise tüm nöronların açılarak tam kapasite çalışmasıdır. Ancak genel başarı %97.81'de kaldığı için %50 Dropout'un bu mimari için fazla olduğu (Underfitting) görülmüştür.
+
+### 4. Aktivasyon Fonksiyonları
+Bu model ve veri seti (MNIST) için en iyi performansı **ReLU** tabanlı fonksiyonlar göstermiştir. Tanh, gradyan akışında ReLU kadar etkili olamadığı için test başarısında (%97.48) geride kalmıştır.
+
+## 🏆 Sonuç
+Bu problem için en ideal konfigürasyon; ağın ezberlemesini engelleyen ancak öğrenme kapasitesini de boğmayan **Aktivasyon: ReLU** ve **Dropout: 0.3** kombinasyonudur.
 
 ---
 
